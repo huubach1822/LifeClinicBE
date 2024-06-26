@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import getPagingData from "../util/getPagingData";
 import sendMail from "../util/sendEmail";
 
+
 const createBooking = async (obj) => {
     try {
 
@@ -57,21 +58,41 @@ const createBooking = async (obj) => {
 
                 if (scheduleTemp.ID_doctor != null) {
                     var tempDoc = await db.doctor.findOne({ where: { ID: scheduleTemp.ID_doctor }, include: { model: db.clinic, attributes: ['Name'] } })
-                    tempString = `Doctor: ${tempDoc.Name}\nClinic: ${tempDoc.clinic.Name}`
+                    tempString = `Doctor: ${tempDoc.Name}<br>Clinic: ${tempDoc.clinic.Name}`
                 } else {
                     var tempHCP = await db.healthcare_package.findOne({ where: { ID: scheduleTemp.ID_healthcare_package }, include: { model: db.clinic, attributes: ['Name'] } })
-                    tempString = `Healthcare package: ${tempHCP.Name}\nClinic: ${tempHCP.clinic.Name}`
+                    tempString = `Healthcare package: ${tempHCP.Name}<br>Clinic: ${tempHCP.clinic.Name}`
                 }
-
+                // send email
                 if (obj.Status !== "Cancelled") {
                     sendMail(patient.Email,
                         "Appointment Confirmed",
-                        `Dear ${patient.Name},\n\nWe're thrilled to inform you that your appointment has been successfully booked. Your commitment to your health is truly commendable, and we're honored to be a part of your wellness journey.\n\nYour appointment details are as follows:\nBooking ID: ${book.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for choosing us!\n\nBest regards,\nThe LifeClinic Team`
+                        `Dear ${patient.Name},<br><br>
+                        We're thrilled to inform you that your appointment has been successfully booked. Your commitment to your health is truly commendable, and we're honored to be a part of your wellness journey.<br>
+                        Your appointment details are as follows:<br>
+                        Booking ID: ${book.ID}<br>
+                        Date: ${scheduleTemp.Date}<br>
+                        Time: ${scheduleTemp.time_type.Value}<br>
+                        ${tempString}<br><br>
+                        Thank you for choosing us!<br>
+                        Best regards,<br>
+                        The LifeClinic Team`
+                        // `Dear ${patient.Name},\n\nWe're thrilled to inform you that your appointment has been successfully booked. Your commitment to your health is truly commendable, and we're honored to be a part of your wellness journey.\n\nYour appointment details are as follows:\nBooking ID: ${book.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for choosing us!\n\nBest regards,\nThe LifeClinic Team`
                     )
                 } else {
                     sendMail(patient.Email,
                         "Appointment Cancellation",
-                        `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${book.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
+                        `Dear ${patient.Name},<br><br>
+                        We regret to inform you that your appointment has been canceled.<br>
+                        Your appointment details are as follows:<br>
+                        Booking ID: ${book.ID}<br>
+                        Date: ${scheduleTemp.Date}<br>
+                        Time: ${scheduleTemp.time_type.Value}<br>
+                        ${tempString}<br><br>
+                        Thank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.<br>
+                        Best regards,<br>
+                        The LifeClinic Team`
+                        // `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${book.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
                     )
                 }
             }
@@ -133,6 +154,14 @@ const deleteBooking = async (ID_booking, ID_schedule) => {
 
         await db.schedule.update({ Current_number: Sequelize.literal('Current_number - 1') }, { where: { ID: ID_schedule } });
 
+        let tempPayment = await db.payment.findOne({ where: { ID_booking: ID_booking } })
+        if (tempPayment.Payment_method === "Cash") {
+            tempPayment.Status = "Cancel"
+            var now = dayjs()
+            tempPayment.Payment_date = now.format('MM-DD-YYYY')
+            await tempPayment.save()
+        }
+
         let tempBooking = await db.booking.findOne({ where: { ID: ID_booking } });
         let scheduleTemp = await db.schedule.findOne({ where: { ID: ID_schedule }, include: [{ model: db.time_type }] });
         let patient = await db.patient.findOne({
@@ -143,15 +172,25 @@ const deleteBooking = async (ID_booking, ID_schedule) => {
 
         if (scheduleTemp.ID_doctor != null) {
             var tempDoc = await db.doctor.findOne({ where: { ID: scheduleTemp.ID_doctor }, include: { model: db.clinic, attributes: ['Name'] } })
-            tempString = `Doctor: ${tempDoc.Name}\nClinic: ${tempDoc.clinic.Name}`
+            tempString = `Doctor: ${tempDoc.Name}<br>Clinic: ${tempDoc.clinic.Name}`
         } else {
             var tempHCP = await db.healthcare_package.findOne({ where: { ID: scheduleTemp.ID_healthcare_package }, include: { model: db.clinic, attributes: ['Name'] } })
-            tempString = `Healthcare package: ${tempHCP.Name}\nClinic: ${tempHCP.clinic.Name}`
+            tempString = `Healthcare package: ${tempHCP.Name}<br>Clinic: ${tempHCP.clinic.Name}`
         }
-
+        // send email
         sendMail(patient.Email,
             "Appointment Cancellation",
-            `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${ID_booking}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
+            `Dear ${patient.Name},<br><br>
+            We regret to inform you that your appointment has been canceled.<br>
+            Your appointment details are as follows:<br>
+            Booking ID: ${ID_booking}<br>
+            Date: ${scheduleTemp.Date}<br>
+            Time: ${scheduleTemp.time_type.Value}<br>
+            ${tempString}<br><br>
+            Thank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.<br>
+            Best regards,<br>
+            The LifeClinic Team`
+            // `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${ID_booking}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
         )
 
     } catch (error) {
@@ -237,7 +276,8 @@ const updateBooking = async (obj) => {
         let scheduleTemp = await db.schedule.findOne({
             where: {
                 ID: obj.ID_schedule
-            }
+            },
+            include: [{ model: db.time_type }]
         });
         let patient = await db.patient.findOne({
             where: {
@@ -249,17 +289,36 @@ const updateBooking = async (obj) => {
 
         if (scheduleTemp.ID_doctor != null) {
             var tempDoc = await db.doctor.findOne({ where: { ID: scheduleTemp.ID_doctor }, include: { model: db.clinic, attributes: ['Name'] } })
-            tempString = `Doctor: ${tempDoc.Name}\nClinic: ${tempDoc.clinic.Name}`
+            tempString = `Doctor: ${tempDoc.Name}<br>Clinic: ${tempDoc.clinic.Name}`
         } else {
             var tempHCP = await db.healthcare_package.findOne({ where: { ID: scheduleTemp.ID_healthcare_package }, include: { model: db.clinic, attributes: ['Name'] } })
-            tempString = `Healthcare package: ${tempHCP.Name}\nClinic: ${tempHCP.clinic.Name}`
+            tempString = `Healthcare package: ${tempHCP.Name}<br>Clinic: ${tempHCP.clinic.Name}`
         }
 
         if (obj.Status === "Cancelled") {
             await db.schedule.update({ Current_number: Sequelize.literal('Current_number - 1') }, { where: { ID: obj.ID_schedule } });
+
+            let tempPayment = await db.payment.findOne({ where: { ID_booking: obj.ID } })
+            if (tempPayment.Payment_method === "Cash") {
+                tempPayment.Status = "Cancel"
+                var now = dayjs()
+                tempPayment.Payment_date = now.format('MM-DD-YYYY')
+                await tempPayment.save()
+            }
+            // send email
             sendMail(patient.Email,
                 "Appointment Cancellation",
-                `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${obj.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
+                `Dear ${patient.Name},<br><br>
+                We regret to inform you that your appointment has been canceled.<br>
+                Your appointment details are as follows:<br>
+                Booking ID: ${obj.ID}<br>
+                Date: ${scheduleTemp.Date}<br>
+                Time: ${scheduleTemp.time_type.Value}<br>
+                ${tempString}<br><br>
+                Thank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.<br>
+                Best regards,<br>
+                The LifeClinic Team`
+                // `Dear ${patient.Name},\n\nWe regret to inform you that your appointment has been canceled.\n\nYour appointment details are as follows:\nBooking ID: ${obj.ID}.\nDate: ${scheduleTemp.Date}.\nTime: ${scheduleTemp.time_type.Value}.\n${tempString}\n\nThank you for considering our services for your healthcare needs. We appreciate your understanding and look forward to serving you in the future.\n\nBest regards,\nThe LifeClinic Team`
             )
         } else if (obj.Status === "Finished") {
 
@@ -270,8 +329,16 @@ const updateBooking = async (obj) => {
                 tempPayment.Payment_date = now.format('MM-DD-YYYY')
                 await tempPayment.save()
             }
-
-            sendMail(patient.Email, `Dear ${patient.Name},\n\nI wanted to take a moment to express my sincere gratitude for choosing our services. Your trust in us means a great deal, and we are grateful for the opportunity to serve you. If you have any further questions or concerns, please don't hesitate to reach out to us. We are always here to assist you.\n\nThank you once again for choosing us. We look forward to seeing you again soon.\n\nBest regards,\nThe LifeClinic Team`,)
+            // send email
+            sendMail(patient.Email,
+                "Appointment Finished",
+                `Dear ${patient.Name},<br><br>
+                I wanted to take a moment to express my sincere gratitude for choosing our services. Your trust in us means a great deal, and we are grateful for the opportunity to serve you. We will notify you as soon as possible about the medical examination results. If you have any further questions or concerns, please don't hesitate to reach out to us.<br><br>
+                Thank you once again for choosing us. We look forward to seeing you again soon.<br>
+                Best regards,<br>
+                The LifeClinic Team`
+                // `Dear ${patient.Name},\n\nI wanted to take a moment to express my sincere gratitude for choosing our services. Your trust in us means a great deal, and we are grateful for the opportunity to serve you. You can check the medical examination results on our website. If you have any further questions or concerns, please don't hesitate to reach out to us.\n\nThank you once again for choosing us. We look forward to seeing you again soon.\n\nBest regards,\nThe LifeClinic Team`
+            )
         }
     } catch (error) {
         console.log(error)
@@ -281,7 +348,7 @@ const updateBooking = async (obj) => {
     return { message: "Success", code: 0 }
 }
 
-const statsBooking = async (id, year, flag) => {
+const statsBooking = async (id, flag) => {
 
     if (id === "all") id = {
         [Op.not]: null
@@ -302,10 +369,10 @@ const statsBooking = async (id, year, flag) => {
                     model: db.schedule,
                     where: {
                         [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
-                                year
-                            ),
+                            // Sequelize.where(
+                            //     Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
+                            //     year
+                            // ),
                             { ID_doctor: id_doc },
                             { ID_healthcare_package: id_hc }
                         ]
@@ -319,10 +386,10 @@ const statsBooking = async (id, year, flag) => {
                     model: db.schedule,
                     where: {
                         [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
-                                year
-                            ),
+                            // Sequelize.where(
+                            //     Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
+                            //     year
+                            // ),
                             { ID_doctor: id_doc },
                             { ID_healthcare_package: id_hc }
                         ]
@@ -339,10 +406,10 @@ const statsBooking = async (id, year, flag) => {
                     model: db.schedule,
                     where: {
                         [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
-                                year
-                            ),
+                            // Sequelize.where(
+                            //     Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
+                            //     year
+                            // ),
                             { ID_doctor: id_doc },
                             { ID_healthcare_package: id_hc }
                         ]
@@ -359,10 +426,10 @@ const statsBooking = async (id, year, flag) => {
                     model: db.schedule,
                     where: {
                         [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
-                                year
-                            ),
+                            // Sequelize.where(
+                            //     Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
+                            //     year
+                            // ),
                             { ID_doctor: id_doc },
                             { ID_healthcare_package: id_hc }
                         ]
@@ -379,10 +446,10 @@ const statsBooking = async (id, year, flag) => {
                     model: db.schedule,
                     where: {
                         [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
-                                year
-                            ),
+                            // Sequelize.where(
+                            //     Sequelize.fn('Year', Sequelize.fn('STR_TO_DATE', Sequelize.col('Date'), '%m-%d-%Y')),
+                            //     year
+                            // ),
                             { ID_doctor: id_doc },
                             { ID_healthcare_package: id_hc }
                         ]
@@ -429,22 +496,22 @@ const statsRevenue = async (id, year, flag) => {
 
         if (flag === "doctor") {
             scheduleDate = await db.booking.findAll({
-                attributes: [[Sequelize.fn('COUNT', Sequelize.col('Date')), 'Date_count'], 'schedule.ID_doctor', 'schedule.doctor.Price'],
+                attributes: [[Sequelize.fn('COUNT', Sequelize.col('Date')), 'Date_count'], 'schedule.ID_doctor', 'Total_price'],
                 include: [
-                    { model: db.schedule, attributes: ['Date'], where: { ID_doctor: id }, include: [{ model: db.doctor, attributes: ['Price'] }] },
+                    { model: db.schedule, attributes: ['Date'], where: { ID_doctor: id }, include: [{ model: db.doctor }] },
                 ],
                 where: { Status: "Finished" },
-                group: ['Date', 'schedule.ID_doctor', 'schedule.doctor.Price'],
+                group: ['Date', 'schedule.ID_doctor', 'Total_price'],
                 raw: true,
             });
         } else {
             scheduleDate = await db.booking.findAll({
-                attributes: [[Sequelize.fn('COUNT', Sequelize.col('Date')), 'Date_count'], 'schedule.ID_healthcare_package', 'schedule.healthcare_package.Price'],
+                attributes: [[Sequelize.fn('COUNT', Sequelize.col('Date')), 'Date_count'], 'schedule.ID_healthcare_package', 'Total_price'],
                 include: [
-                    { model: db.schedule, attributes: ['Date'], where: { ID_healthcare_package: id }, include: [{ model: db.healthcare_package, attributes: ['Price'] }] },
+                    { model: db.schedule, attributes: ['Date'], where: { ID_healthcare_package: id }, include: [{ model: db.healthcare_package }] },
                 ],
                 where: { Status: "Finished" },
-                group: ['Date', 'schedule.ID_healthcare_package', 'schedule.healthcare_package.Price'],
+                group: ['Date', 'schedule.ID_healthcare_package', 'Total_price'],
                 raw: true,
             });
         }
@@ -469,52 +536,52 @@ const statsRevenue = async (id, year, flag) => {
             if (dayjs(item["schedule.Date"], "MM-DD-YYYY").year() == year) {
                 switch (dayjs(item["schedule.Date"], "MM-DD-YYYY").month() + 1) {
                     case 1:
-                        totalPerMonth.Jan += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Jan += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 2:
-                        totalPerMonth.Feb += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Feb += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 3:
-                        totalPerMonth.Mar += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Mar += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 4:
-                        totalPerMonth.Apr += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Apr += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 5:
-                        totalPerMonth.May += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.May += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 6:
-                        totalPerMonth.Jun += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Jun += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 7:
-                        totalPerMonth.Jul += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Jul += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 8:
-                        totalPerMonth.Aug += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Aug += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 9:
-                        totalPerMonth.Sep += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Sep += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 10:
-                        totalPerMonth.Oct += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Oct += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 11:
-                        totalPerMonth.Nov += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Nov += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                     case 12:
-                        totalPerMonth.Dec += item["Date_count"] * item.Price;
-                        revenue += item["Date_count"] * item.Price;
+                        totalPerMonth.Dec += item["Date_count"] * item.Total_price;
+                        revenue += item["Date_count"] * item.Total_price;
                         break;
                 }
             }
@@ -624,6 +691,95 @@ const getBookingForAdmin = async (id, status, date, time, page, flag) => {
     return { message: "Success", code: 0, result }
 }
 
+const getMedicalResultByID = async (id) => {
+
+    try {
+        var result = await db.medical_result.findOne({
+            where: { ID_booking: id }
+        })
+    } catch (error) {
+        console.log(error)
+        return { message: "Something went wrong", code: 1 }
+    }
+
+    return { message: "Success", code: 0, result }
+}
+
+const updateMedicalResult = async (data) => {
+    try {
+        var result = await db.medical_result.update(data, {
+            where: { ID: data.ID }
+        })
+
+        var booking = await db.booking.findOne({
+            where: { ID: data.ID_booking }
+        })
+
+        var patient = await db.patient.findOne({
+            where: { ID: booking.ID_patient }
+        })
+
+        // send email
+        sendMail(patient.Email,
+            "Medical Examination Result",
+            `Dear ${patient.Name},<br><br>
+            Medical examination result is available and attached below.<br>Thank you once again for choosing us. We look forward to seeing you again soon.<br>
+            Best regards,<br>
+            The LifeClinic Team`,
+            data.Result
+        )
+
+    } catch (error) {
+        console.log(error)
+        return { message: "Something went wrong", code: 1 }
+    }
+
+    return { message: "Success", code: 0, result }
+}
+
+const createMedicalResult = async (data) => {
+    try {
+        var result = await db.medical_result.create(data)
+
+        var booking = await db.booking.findOne({
+            where: { ID: data.ID_booking }
+        })
+
+        var patient = await db.patient.findOne({
+            where: { ID: booking.ID_patient }
+        })
+
+        // send email
+        sendMail(patient.Email,
+            "Medical Examination Result",
+            `Dear ${patient.Name},<br><br>
+            Medical examination result is available and attached below.<br>Thank you once again for choosing us. We look forward to seeing you again soon.<br>
+            Best regards,<br>
+            The LifeClinic Team`,
+            data.Result
+        )
+
+    } catch (error) {
+        console.log(error)
+        return { message: "Something went wrong", code: 1 }
+    }
+
+    return { message: "Success", code: 0, result }
+}
+
+const deleteMedicalResult = async (id) => {
+    try {
+        var result = await db.medical_result.destroy({
+            where: { ID: id }
+        })
+    } catch (error) {
+        console.log(error)
+        return { message: "Something went wrong", code: 1 }
+    }
+
+    return { message: "Success", code: 0, result }
+}
+
 
 module.exports = {
     createBooking: createBooking,
@@ -633,5 +789,9 @@ module.exports = {
     updateBooking: updateBooking,
     statsBooking: statsBooking,
     statsRevenue: statsRevenue,
-    getBookingForAdmin: getBookingForAdmin
+    getBookingForAdmin: getBookingForAdmin,
+    getMedicalResultByID: getMedicalResultByID,
+    updateMedicalResult: updateMedicalResult,
+    createMedicalResult: createMedicalResult,
+    deleteMedicalResult: deleteMedicalResult
 }

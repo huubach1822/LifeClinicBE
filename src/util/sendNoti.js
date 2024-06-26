@@ -1,13 +1,13 @@
 const cron = require('node-cron');
 import db from "../models/db";
 import dayjs from "dayjs";
+import sendEmail from "../util/sendEmail";
 
 const sendNoti = () => {
 
-    cron.schedule('0 7 * * *', async () => {
+    cron.schedule('0 7 * * *', async () => {    // second (optional), minute, hour, day of month, month, day of week
         
-        let day = dayjs().add(1, 'day');
-        let date = day.format("MM-DD-YYYY");
+        let date = dayjs().add(1, 'day').format("MM-DD-YYYY");
 
         let temp = await db.booking.findAll({
             include: [
@@ -16,7 +16,7 @@ const sendNoti = () => {
                         Date: date
                         // , ID_time_type: timeID 
                     },
-                    include: [{ model: db.time_type }]
+                    include: [{ model: db.time_type }, { model: db.doctor }]
                 },
                 { model: db.patient }
             ],
@@ -25,6 +25,7 @@ const sendNoti = () => {
             },
         })
 
+  
         if (temp.length != 0) {
             for (let i = 0; i < temp.length; i++) {
 
@@ -32,16 +33,39 @@ const sendNoti = () => {
 
                 if (temp[i].schedule.ID_doctor != null) {
                     var tempDoc = await db.doctor.findOne({ where: { ID: temp[i].schedule.ID_doctor }, include: { model: db.clinic, attributes: ['Name'] } })
-                    tempString = `Doctor: ${tempDoc.Name}\nClinic: ${tempDoc.clinic.Name}`
+                    tempString = `Doctor: ${tempDoc.Name}<br>Clinic: ${tempDoc.clinic.Name}`
                 } else {
                     var tempHCP = await db.healthcare_package.findOne({ where: { ID: temp[i].schedule.ID_healthcare_package }, include: { model: db.clinic, attributes: ['Name'] } })
-                    tempString = `Healthcare package: ${tempHCP.Name}\nClinic: ${tempHCP.clinic.Name}`
+                    tempString = `Healthcare package: ${tempHCP.Name}<br>Clinic: ${tempHCP.clinic.Name}`
                 }
 
-                sendMail(temp[i].patient.Email,
+                // send email
+                sendEmail(temp[i].patient.Email,
                     "Appointment Reminder",
-                    `Dear ${temp[i].patient.Name},\n\nThis is a friendly reminder of your upcoming medical appointment scheduled at LifeClinic. Here are the details of your appointment:\nBooking ID: ${temp[i].ID}.\nDate: ${temp[i].schedule.Date}.\nTime: ${temp[i].schedule.time_type.Value}.\n${tempString}\n\nThank you for choosing LifeClinic for your healthcare needs. We look forward to seeing you soon.\n\nBest regards,\nThe LifeClinic Team`
+                    `Dear ${temp[i].patient.Name},<br><br>
+                    This is a friendly reminder of your upcoming medical appointment scheduled at LifeClinic. Here are the details of your appointment:<br>
+                    Booking ID: ${temp[i].ID}<br>
+                    Date: ${temp[i].schedule.Date}<br>
+                    Time: ${temp[i].schedule.time_type.Value}<br>
+                    ${tempString}<br><br>
+                    Thank you for choosing LifeClinic for your healthcare needs. We look forward to seeing you soon.<br>
+                    Best regards,<br>
+                    The LifeClinic Team`
                 )
+
+                // send noti
+                sendEmail(temp[i].schedule.doctor.Email,
+                    "Appointment Reminder",
+                    `Dear ${temp[i].schedule.doctor.Name},<br><br>
+                    This is a friendly reminder of your upcoming medical appointment scheduled at LifeClinic. Here are the details of your appointment:<br>
+                    Booking ID: ${temp[i].ID}<br>
+                    Date: ${temp[i].schedule.Date}<br>
+                    Time: ${temp[i].schedule.time_type.Value}<br>
+                    ${tempString}<br><br>
+                    Best regards,<br>
+                    The LifeClinic Team`
+                )
+
             }
         }
 

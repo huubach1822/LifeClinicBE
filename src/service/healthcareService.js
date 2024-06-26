@@ -230,7 +230,7 @@ const getAllHealthcarePaginationAdmin = async (page, queryString, clinicID) => {
                     }
                 },
                 { model: db.healthcare_type, attributes: ['ID', 'Name'] },
-                // { model: db.healthcare_service }
+                { model: db.healthcare_service }
             ],
             where: {
                 Name: {

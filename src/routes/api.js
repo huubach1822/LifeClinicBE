@@ -60,7 +60,7 @@ const initApiRoutes = (app) => {
     router.get("/getBookingForDoctor/:id/:status/:date/:time/:page", bookingController.getBookingForDoctor);
     router.put("/updateBooking", bookingController.updateBooking);
 
-    router.get("/statsBooking/:id/:year/:flag", bookingController.statsBooking);
+    router.get("/statsBooking/:id/:flag", bookingController.statsBooking);
     router.get("/statsRevenue/:id/:year/:flag", bookingController.statsRevenue);
     router.get("/getAllPatientForDoctor/:id/:page/:queryString?", patientController.getAllPatientForDoctor);
 
@@ -89,7 +89,7 @@ const initApiRoutes = (app) => {
 
     router.post("/createClinic", upload.array("images"), clinicController.createClinic);
     router.put("/updateClinicByID", upload.single("image"), clinicController.updateClinicByID);
-    router.delete("/deleteClinic/:id", clinicController.deleteClinicByID);
+    router.delete("/deleteClinicByID/:id", clinicController.deleteClinicByID);
 
     router.get("/getClinicImage/:id", clinicController.getClinicImage);
     router.delete("/deleteClinicImage/:id", clinicController.deleteClinicImage);
@@ -106,6 +106,11 @@ const initApiRoutes = (app) => {
     router.delete("/deleteHealthcarePackage/:id", healthcareController.deleteHealthcarePackage);
 
     router.get("/getTotalAdmin", clinicController.getTotalAdmin);
+
+    router.get("/getMedicalResultByID/:id", bookingController.getMedicalResultByID);
+    router.put("/updateMedicalResult", bookingController.updateMedicalResult);
+    router.post("/createMedicalResult", bookingController.createMedicalResult);
+    router.delete("/deleteMedicalResult/:id", bookingController.deleteMedicalResult);
 
     return app.use("/", router);
 }

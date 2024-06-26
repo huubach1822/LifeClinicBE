@@ -12,6 +12,7 @@ var _doctor = require("./doctor");
 var _healthcare_package = require("./healthcare_package");
 var _healthcare_service = require("./healthcare_service");
 var _healthcare_type = require("./healthcare_type");
+var _medical_result = require("./medical_result");
 var _patient = require("./patient");
 var _payment = require("./payment");
 var _schedule = require("./schedule");
@@ -32,6 +33,7 @@ function initModels(sequelize) {
   var healthcare_package = _healthcare_package(sequelize, DataTypes);
   var healthcare_service = _healthcare_service(sequelize, DataTypes);
   var healthcare_type = _healthcare_type(sequelize, DataTypes);
+  var medical_result = _medical_result(sequelize, DataTypes);
   var patient = _patient(sequelize, DataTypes);
   var payment = _payment(sequelize, DataTypes);
   var schedule = _schedule(sequelize, DataTypes);
@@ -50,6 +52,8 @@ function initModels(sequelize) {
   account_type.hasMany(account, { foreignKey: "ID_account_type"});
   booking_package_service.belongsTo(booking, { foreignKey: "ID_booking"});
   booking.hasMany(booking_package_service, { foreignKey: "ID_booking"});
+  medical_result.belongsTo(booking, { foreignKey: "ID_booking"});
+  booking.hasMany(medical_result, { foreignKey: "ID_booking"});
   payment.belongsTo(booking, { foreignKey: "ID_booking"});
   booking.hasMany(payment, { foreignKey: "ID_booking"});
   clinic.belongsTo(city, { foreignKey: "ID_city"});
@@ -95,6 +99,7 @@ function initModels(sequelize) {
     healthcare_package,
     healthcare_service,
     healthcare_type,
+    medical_result,
     patient,
     payment,
     schedule,
